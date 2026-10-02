@@ -281,7 +281,10 @@ export const api = {
     if (!res.ok) {
       throw new Error(json.error || 'Failed to register account.');
     }
-    return json;
+    return {
+      ...json,
+      user: json.user || json.data
+    };
   },
 
   async loginUser(payload: { email: string; password: string; loginMethod?: string }) {
@@ -294,7 +297,10 @@ export const api = {
     if (!res.ok) {
       throw new Error(json.error || 'Failed to log in. Please check your credentials.');
     }
-    return json;
+    return {
+      ...json,
+      user: json.user || json.data
+    };
   },
 
   async analyzeWasteImage(imageBase64: string, mimeType: string = 'image/jpeg') {

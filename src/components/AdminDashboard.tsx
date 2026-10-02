@@ -195,33 +195,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
       
       {/* Admin Branding Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold mb-2 border border-emerald-200">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             Municipal Waste Command & Dispatch Center
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Admin Environmental Operations
           </h1>
-          <p className="text-slate-600 text-sm mt-1">
+          <p className="text-slate-600 text-xs sm:text-sm mt-1 max-w-xl">
             Dispatch triage, field squad allocation, and live municipal waste lifecycle governance.
           </p>
         </div>
 
         {/* Global Control Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setShowMapModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer min-h-[40px]"
           >
-            <MapIcon className="w-4 h-4 text-emerald-600" />
-            Spatial Map View ({issues.length})
+            <MapIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Map View ({issues.length})</span>
           </button>
           
           <button
             onClick={() => fetchIssues()}
-            className="p-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors cursor-pointer"
+            className="p-2 sm:p-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center shrink-0"
             title="Refresh Table"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
@@ -229,7 +229,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={onNavigateToReport}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap min-h-[40px]"
           >
             + New Incident
           </button>
@@ -238,9 +238,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Floating Feedback Notification */}
       {feedbackMsg && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="mb-6 p-3.5 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{feedbackMsg.text}</span>
           </div>
           <button
@@ -252,107 +252,107 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* Top Stat Cards (White & Green Theme with trend indicators) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Top Stat Cards (2 columns on mobile, 4 on desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
         
         {/* Stat 1: Total Complaints */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Total Complaints</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/90 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-xs hover:border-emerald-200 transition-colors">
+          <div className="flex items-center justify-between text-slate-500 mb-1 sm:mb-2">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-600 truncate">Total Complaints</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-tabular">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-tabular">
               {totalCount}
             </span>
-            <span className="inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-              <TrendingUp className="w-3 h-3 mr-0.5" /> +18% this month
+            <span className="hidden sm:inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+              <TrendingUp className="w-3 h-3 mr-0.5" /> +18%
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            {resolvedCount} resolved · {totalCount - resolvedCount} active in queue
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-1 sm:mt-2 truncate">
+            {resolvedCount} resolved · {totalCount - resolvedCount} active
           </p>
         </div>
 
         {/* Stat 2: Pending Issues */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:border-amber-200 transition-colors">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Pending Issues</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <AlertCircle className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/90 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-xs hover:border-amber-200 transition-colors">
+          <div className="flex items-center justify-between text-slate-500 mb-1 sm:mb-2">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-600 truncate">Pending</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-tabular">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-tabular">
               {pendingCount}
             </span>
-            <span className="inline-flex items-center text-xs font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md">
-              Awaiting Triage
+            <span className="inline-flex items-center text-[10px] sm:text-xs font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md">
+              Awaiting
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            Requires crew assignment & priority verification
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-1 sm:mt-2 truncate">
+            Requires crew triage
           </p>
         </div>
 
         {/* Stat 3: Resolved Today */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Resolved Today</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/90 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-xs hover:border-emerald-200 transition-colors">
+          <div className="flex items-center justify-between text-slate-500 mb-1 sm:mb-2">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-600 truncate">Resolved</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-tabular">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-tabular">
               {resolvedCount}
             </span>
-            <span className="inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-              <TrendingUp className="w-3 h-3 mr-0.5" /> +15% vs yesterday
+            <span className="hidden sm:inline-flex items-center text-[10px] sm:text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+              <TrendingUp className="w-3 h-3 mr-0.5" /> +15%
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            {totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0}% municipal clearance success rate
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-1 sm:mt-2 truncate">
+            {totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0}% success rate
           </p>
         </div>
 
         {/* Stat 4: Active Workers */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Active Field Squads</span>
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
-              <Truck className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/90 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-xs hover:border-emerald-200 transition-colors">
+          <div className="flex items-center justify-between text-slate-500 mb-1 sm:mb-2">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-600 truncate">Field Squads</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+              <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 font-mono-tabular">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-tabular">
               {activeWorkersCount}
             </span>
-            <span className="inline-flex items-center text-xs font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md">
-              {WORKER_SQUADS.length} Squads Total
+            <span className="inline-flex items-center text-[10px] sm:text-xs font-semibold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded-md">
+              {WORKER_SQUADS.length} Squads
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            {inProgressCount + assignedCount} operations actively in progress
+          <p className="text-[10px] sm:text-[11px] text-slate-500 mt-1 sm:mt-2 truncate">
+            {inProgressCount + assignedCount} operations active
           </p>
         </div>
 
       </div>
 
       {/* Admin Tab Switcher */}
-      <div className="flex items-center gap-2 mb-6 border-b border-slate-200 pb-3">
+      <div className="flex items-center gap-2 mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveAdminTab('incidents')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
             activeAdminTab === 'incidents'
               ? 'bg-emerald-600 text-white shadow-xs'
               : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          Waste Incidents Registry ({issues.length})
+          <span>Waste Incidents Registry ({issues.length})</span>
         </button>
 
         <button
@@ -360,14 +360,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             setActiveAdminTab('logins');
             fetchLoginLogs();
           }}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
             activeAdminTab === 'logins'
               ? 'bg-emerald-600 text-white shadow-xs'
               : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
-          Login & Security Activity ({loginLogs.length})
+          <span>Login & Security Activity ({loginLogs.length})</span>
         </button>
       </div>
 
@@ -449,9 +449,124 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          {/* Main Admin Data Table (Step 3 specification) */}
+          {/* Main Admin Data Table (Desktop Table + Mobile Cards) */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
+            
+            {/* Mobile Cards View (< 640px) */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {loading ? (
+                <div className="text-center py-10 text-slate-500">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto text-emerald-600 mb-2" />
+                  Loading municipal incident registry...
+                </div>
+              ) : displayedIssues.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs">
+                  No issues matching the selected filters.
+                </div>
+              ) : (
+                displayedIssues.map((issue) => (
+                  <div key={issue.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        {issue.photoUrl ? (
+                          <img
+                            src={issue.photoUrl}
+                            alt={issue.category}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 cursor-pointer"
+                            onClick={() => setInspectIssue(issue)}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 font-bold text-xs">
+                            GPS
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-mono-tabular font-bold text-xs text-slate-900 block">
+                            {issue.id}
+                          </span>
+                          <span className="font-semibold text-xs text-slate-800 line-clamp-1">
+                            {issue.category}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(issue.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {issue.severity === 'Critical' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            Critical
+                          </span>
+                        )}
+                        {issue.severity === 'High' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200">
+                            High
+                          </span>
+                        )}
+                        {issue.severity === 'Medium' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            Medium
+                          </span>
+                        )}
+                        {issue.severity === 'Low' && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                            Low
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setInspectIssue(issue)}
+                          className="p-1 text-slate-500 hover:text-emerald-700 ml-1"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-1.5 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="truncate">{issue.location.address}</span>
+                    </div>
+
+                    {/* Inline Mobile Update Selectors */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Status:</label>
+                        <select
+                          value={issue.status}
+                          onChange={(e) => handleStatusChange(issue.id, e.target.value as IssueStatus)}
+                          className="w-full rounded-lg px-2 py-1.5 text-xs font-semibold border bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Assigned">Assigned</option>
+                          <option value="In-Progress">In-Progress</option>
+                          <option value="Resolved">Resolved</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Assign Squad:</label>
+                        <select
+                          value={issue.assignedWorker || 'Unassigned'}
+                          onChange={(e) => handleWorkerAssign(issue.id, e.target.value)}
+                          className="w-full bg-white border border-slate-300 text-slate-800 text-xs font-medium rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer truncate"
+                        >
+                          <option value="Unassigned">Unassigned</option>
+                          {WORKER_SQUADS.map((squad) => (
+                            <option key={squad.id} value={squad.name}>
+                              {squad.name.split('(')[0]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View (>= 640px) */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">

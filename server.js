@@ -367,17 +367,18 @@ app.post('/api/auth/register', async (req, res) => {
 
     if (isMongoConnected) {
       const exists = await User.findOne({ email: cleanEmail });
-      if (exists) return res.status(409).json({ success: false, error: 'User with this email already registered' });
+      if (exists) return res.status(409).json({ success: false, error: 'User with this email already registered. Please click "Sign In".' });
       const user = await User.create({ id: `usr-${Date.now()}`, name, email: cleanEmail, password, role, zone });
-      return res.status(201).json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role, zone: user.zone } });
+      const userPayload = { id: user.id || user._id, name: user.name, email: user.email, role: user.role, zone: user.zone };
+      return res.status(201).json({ success: true, user: userPayload, data: userPayload, source: 'mongodb' });
     }
 
     if (inMemoryUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
-      return res.status(409).json({ success: false, error: 'User with this email already registered' });
+      return res.status(409).json({ success: false, error: 'User with this email already registered. Please click "Sign In".' });
     }
     const newUser = { id: `usr-${Date.now()}`, name, email: cleanEmail, password, role, zone };
     inMemoryUsers.push(newUser);
-    res.status(201).json({ success: true, data: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, zone: newUser.zone } });
+    return res.status(201).json({ success: true, user: newUser, data: newUser, source: 'in-memory' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -391,13 +392,14 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (isMongoConnected) {
       const user = await User.findOne({ email: cleanEmail, password });
-      if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password' });
-      return res.json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role, zone: user.zone } });
+      if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password. If you are new, please switch to Register.' });
+      const userPayload = { id: user.id || user._id, name: user.name, email: user.email, role: user.role, zone: user.zone };
+      return res.json({ success: true, user: userPayload, data: userPayload, source: 'mongodb' });
     }
 
     const user = inMemoryUsers.find((u) => u.email.toLowerCase() === cleanEmail && u.password === password);
-    if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password' });
-    res.json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role, zone: user.zone } });
+    if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password. If you are new, please switch to Register.' });
+    return res.json({ success: true, user, data: user, source: 'in-memory' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -59,11 +59,11 @@ export const LoginModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
       <div
-        className="bg-white border border-slate-200 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-150"
+        className="bg-white border border-slate-200 rounded-3xl max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-extrabold text-base shadow-xs">
               E
@@ -126,16 +126,28 @@ export const LoginModal: React.FC = () => {
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">{error}</p>
-                {tab === 'signin' && error.includes('not registered') && (
+                {tab === 'signin' && (error.includes('not registered') || error.includes('Register')) && (
                   <button
                     type="button"
                     onClick={() => {
                       setTab('register');
                       setError('');
                     }}
-                    className="mt-1.5 text-xs text-rose-900 underline font-bold cursor-pointer"
+                    className="mt-1.5 text-xs text-rose-900 underline font-bold cursor-pointer block"
                   >
                     Click here to Register this account &rarr;
+                  </button>
+                )}
+                {tab === 'register' && error.toLowerCase().includes('already registered') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab('signin');
+                      setError('');
+                    }}
+                    className="mt-1.5 text-xs text-rose-900 underline font-bold cursor-pointer block"
+                  >
+                    Click here to Sign In with this email &rarr;
                   </button>
                 )}
               </div>

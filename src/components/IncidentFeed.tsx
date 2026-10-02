@@ -383,13 +383,13 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
         <div>
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full mb-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
             Real-Time GPS Incident Map & Civic Feed
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Live Waste Incident Map
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl">
@@ -397,10 +397,10 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => loadIssues()}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer shadow-xs"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer shadow-xs min-h-[42px] min-w-[42px] flex items-center justify-center"
             title="Refresh Feed"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
@@ -408,7 +408,7 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
           
           <button
             onClick={onNavigateToReport}
-            className="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs hover:shadow transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs hover:shadow transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap min-h-[42px]"
           >
             + Report New Issue
           </button>
@@ -416,27 +416,27 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
       </div>
 
       {/* Real Live Interactive Leaflet Map Showcase */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-200 shadow-md mb-8 bg-slate-100">
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200 shadow-md mb-8 bg-slate-100">
         
         {/* Map Header Overlay Bar */}
-        <div className="absolute top-4 left-4 right-4 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <div className="absolute top-2.5 sm:top-4 left-2.5 sm:left-4 right-2.5 sm:right-4 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
           {/* Map / Satellite Mode Switcher */}
-          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-md border border-slate-200 p-1 flex items-center pointer-events-auto">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-md border border-slate-200 p-0.5 sm:p-1 flex items-center pointer-events-auto">
             <button
               onClick={() => setFeedMapMode('map')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 feedMapMode === 'map' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Street Map
+              Street
             </button>
             <button
               onClick={() => setFeedMapMode('satellite')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 feedMapMode === 'satellite' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Satellite View
+              Satellite
             </button>
           </div>
 
@@ -445,25 +445,25 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
             <button
               onClick={handleLocateMyArea}
               disabled={isLocatingMap}
-              className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-bold text-xs px-3.5 py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer hover:text-emerald-700"
+              className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-bold text-[11px] sm:text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer hover:text-emerald-700"
             >
               <Crosshair className={`w-3.5 h-3.5 text-emerald-600 ${isLocatingMap ? 'animate-spin' : ''}`} />
-              <span>{isLocatingMap ? 'Locating...' : 'Locate My Area'}</span>
+              <span>{isLocatingMap ? 'Locating...' : 'Locate Area'}</span>
             </button>
-            <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-2 rounded-xl text-xs font-bold shadow-md hidden sm:flex items-center gap-1.5">
+            <div className="bg-slate-900/90 backdrop-blur-md text-white px-2.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md hidden sm:flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{issues.length} Live Pins Active</span>
+              <span>{issues.length} Active</span>
             </div>
           </div>
         </div>
 
         {/* Live Leaflet Map Container */}
-        <div ref={mapContainerRef} className="w-full h-80 sm:h-96 z-0" />
+        <div ref={mapContainerRef} className="w-full h-72 sm:h-96 z-0" />
 
         {/* Bottom Legend */}
-        <div className="absolute bottom-3 left-4 z-10 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-200 text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-3">
+        <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-4 z-10 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl border border-slate-200 text-[10px] sm:text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-2 sm:gap-3 max-w-[90%] flex-wrap">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-rose-500"></span> Critical / Urgent
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span> Urgent
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-amber-500"></span> Moderate
@@ -475,13 +475,13 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs mb-8 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-xs mb-8 space-y-3 sm:space-y-4">
         {/* Search Input Row */}
         <form onSubmit={handleSearchSubmit} className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by Ticket ID, street address, category, or notes..."
+            placeholder="Search by Ticket ID, street address, category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-emerald-600 rounded-xl pl-10 pr-20 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium"
@@ -495,15 +495,15 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
         </form>
 
         {/* Filters Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
           
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl">
+          {/* Status Filter (Scrollable on small mobile) */}
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl overflow-x-auto scrollbar-none max-w-full">
             {['All', 'Pending', 'In-Progress', 'Resolved'].map((st) => (
               <button
                 key={st}
                 onClick={() => setSelectedStatus(st)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   selectedStatus === st
                     ? 'bg-white text-emerald-800 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -514,30 +514,30 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
             {/* Severity Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 font-semibold">Severity:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5">
+              <span className="text-[11px] sm:text-xs text-slate-500 font-semibold">Severity:</span>
               <select
                 value={selectedSeverity}
                 onChange={(e) => setSelectedSeverity(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
               >
                 <option value="All">All Levels</option>
                 <option value="Low">Low / Routine</option>
-                <option value="Medium">Medium / Moderate</option>
+                <option value="Medium">Medium</option>
                 <option value="High">High</option>
-                <option value="Critical">Critical / Urgent</option>
+                <option value="Critical">Critical</option>
               </select>
             </div>
 
             {/* Category Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 font-semibold">Category:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5">
+              <span className="text-[11px] sm:text-xs text-slate-500 font-semibold">Category:</span>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer max-w-[150px] truncate"
+                className="w-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer truncate"
               >
                 <option value="All">All Types</option>
                 <option value="Illegal Dumping">Illegal Dumping</option>
@@ -559,9 +559,9 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
                   setSelectedCategory('All');
                   setSearchTerm('');
                 }}
-                className="text-xs text-emerald-700 hover:text-emerald-800 font-bold ml-1 underline cursor-pointer"
+                className="col-span-2 sm:col-span-1 text-xs text-emerald-700 hover:text-emerald-800 font-bold underline cursor-pointer text-center sm:text-left py-1"
               >
-                Reset
+                Reset Filters
               </button>
             )}
           </div>
@@ -742,15 +742,15 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
             </div>
 
             {/* Transition Status Controls */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span className="text-xs font-semibold text-slate-500">Update Incident Lifecycle:</span>
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
                 {(['Pending', 'In-Progress', 'Resolved'] as IssueStatus[]).map((st) => (
                   <button
                     key={st}
                     disabled={updatingStatus || activeModalIssue.status === st}
                     onClick={() => handleUpdateStatus(activeModalIssue.id, st)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                    className={`py-2 px-2.5 text-center text-xs font-bold rounded-lg transition-colors cursor-pointer min-h-[38px] flex items-center justify-center ${
                       activeModalIssue.status === st
                         ? 'bg-slate-800 text-white opacity-80 cursor-default'
                         : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
