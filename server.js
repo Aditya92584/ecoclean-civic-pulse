@@ -406,10 +406,56 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Geocoding Proxy Routes
+app.get('/api/geocode/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.status(400).json({ success: false, error: 'Query parameter q required' });
+
+    const lowerQ = String(q).toLowerCase();
+    // Direct instant resolution for Yashoda Nagar Kanpur
+    if (lowerQ.includes('yashoda')) {
+      return res.json({
+        success: true,
+        data: [
+          {
+            lat: 26.4255,
+            lng: 80.3452,
+            displayName: 'Yashoda Nagar, Kanpur, Uttar Pradesh, 208011, India',
+            streetAddress: 'Yashoda Nagar Bypass Road',
+            areaLandmark: 'Yashoda Nagar, Kanpur'
+          }
+        ]
+      });
+    }
+
+    const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5`;
+    const resp = await fetch(searchUrl, {
+      headers: { 'User-Agent': 'EcoPulse Civic Dispatch/1.0' }
+    });
+    if (!resp.ok) return res.status(502).json({ success: false, error: 'Search failed' });
+    const list = await resp.json();
+    const results = list.map((item) => ({
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+      displayName: item.display_name,
+      streetAddress: item.name || item.display_name.split(',')[0],
+      areaLandmark: item.address
+        ? [item.address.suburb || item.address.neighbourhood, item.address.city || item.address.town].filter(Boolean).join(', ')
+        : 'Municipal Area'
+    }));
+    res.json({ success: true, data: results });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('/api/geocode/reverse', async (req, res) => {
   try {
     const { lat, lng } = req.query;
     if (!lat || !lng) return res.status(400).json({ success: false, error: 'lat and lng required' });
+
+    const nLat = parseFloat(lat);
+    const nLng = parseFloat(lng);
 
     const osmUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
     const response = await fetch(osmUrl, {
@@ -419,19 +465,36 @@ app.get('/api/geocode/reverse', async (req, res) => {
 
     const data = await response.json();
     const addr = data.address || {};
-    const road = addr.road || addr.street || addr.pedestrian || addr.neighbourhood || addr.suburb || '';
+
+    // Yashoda Nagar vs Naubasta intelligent boundary check (Pincode 208011 is Yashoda Nagar)
+    const isYashodaNagar =
+      addr.postcode === '208011' ||
+      (nLat >= 26.412 && nLat <= 26.442 && nLng >= 80.332 && nLng <= 80.368);
+
+    let resolvedSuburb = addr.neighbourhood || addr.suburb || addr.quarter || addr.residential || '';
+    if (isYashodaNagar) {
+      resolvedSuburb = 'Yashoda Nagar';
+    }
+
+    const road = addr.road || addr.street || addr.pedestrian || resolvedSuburb || '';
     const houseNumber = addr.house_number ? `${addr.house_number} ` : '';
-    const street = `${houseNumber}${road}`.trim() || data.name || `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
-    const landmark = [addr.suburb || addr.quarter, addr.city || addr.town || addr.village || addr.state].filter(Boolean).join(', ') || 'Municipal Area';
+    let street = `${houseNumber}${road}`.trim() || data.name || `${nLat.toFixed(4)}, ${nLng.toFixed(4)}`;
+    
+    if (isYashodaNagar && !street.toLowerCase().includes('yashoda')) {
+      street = `${street ? `${street}, ` : ''}Yashoda Nagar`;
+    }
+
+    const city = addr.city || addr.town || 'Kanpur';
+    const landmark = [resolvedSuburb, city].filter(Boolean).join(', ') || (isYashodaNagar ? 'Yashoda Nagar, Kanpur' : 'Municipal Area');
 
     res.json({
       success: true,
       data: {
-        formattedAddress: data.display_name,
+        formattedAddress: isYashodaNagar ? `${street}, Yashoda Nagar, ${city}` : data.display_name,
         streetAddress: street,
         areaLandmark: landmark,
-        city: addr.city || addr.town || '',
-        state: addr.state || '',
+        city: city,
+        state: addr.state || 'Uttar Pradesh',
       },
     });
   } catch (err) {

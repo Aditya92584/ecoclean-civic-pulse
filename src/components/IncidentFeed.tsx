@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -19,12 +19,9 @@ import {
   ChevronRight,
   Truck,
   Image as ImageIcon,
-  Crosshair,
   Layers,
-  Map as MapIcon,
-  Maximize2
+  Sparkles
 } from 'lucide-react';
-import L from 'leaflet';
 import { Issue, IssueSeverity, IssueStatus } from '../types/issue';
 import { api } from '../services/api';
 
@@ -49,19 +46,6 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
   // Detail Modal State
   const [activeModalIssue, setActiveModalIssue] = useState<Issue | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-
-  // Live Map State
-  const [feedMapMode, setFeedMapMode] = useState<'map' | 'satellite'>('map');
-  const [isLocatingMap, setIsLocatingMap] = useState(false);
-  const [activeHoverId, setActiveHoverId] = useState<string | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  // Leaflet Map Refs
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<L.Map | null>(null);
-  const markersGroupRef = useRef<L.LayerGroup | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Fetch issues
   const loadIssues = async (overrideSelectedId?: string) => {
@@ -115,190 +99,8 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
     return () => window.removeEventListener('ecoclean:issue-created', handleNewIssue);
   }, []);
 
-  // Initialize Real Leaflet Live Map
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    if (!leafletMapRef.current) {
-      const initialMap = L.map(mapContainerRef.current, {
-        center: [28.6139, 77.2090],
-        zoom: 13,
-        zoomControl: false,
-        attributionControl: false
-      });
-
-      const tileUrl =
-        feedMapMode === 'satellite'
-          ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-      const initialLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(initialMap);
-      tileLayerRef.current = initialLayer;
-
-      const layerGroup = L.layerGroup().addTo(initialMap);
-      markersGroupRef.current = layerGroup;
-
-      leafletMapRef.current = initialMap;
-
-      setTimeout(() => {
-        initialMap.invalidateSize();
-      }, 300);
-    }
-
-    return () => {
-      if (leafletMapRef.current) {
-        leafletMapRef.current.remove();
-        leafletMapRef.current = null;
-      }
-    };
-  }, []);
-
-  // Toggle Map / Satellite tiles
-  useEffect(() => {
-    if (!leafletMapRef.current) return;
-    if (tileLayerRef.current) {
-      leafletMapRef.current.removeLayer(tileLayerRef.current);
-    }
-    const tileUrl =
-      feedMapMode === 'satellite'
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-    const newLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(leafletMapRef.current);
-    tileLayerRef.current = newLayer;
-    leafletMapRef.current.invalidateSize();
-  }, [feedMapMode]);
-
-  // Sync Issues to Real Map Markers
-  useEffect(() => {
-    if (!leafletMapRef.current || !markersGroupRef.current) return;
-
-    markersGroupRef.current.clearLayers();
-
-    const validCoords: [number, number][] = [];
-
-    issues.forEach((issue) => {
-      if (!issue.location || typeof issue.location.lat !== 'number' || typeof issue.location.lng !== 'number') {
-        return;
-      }
-
-      validCoords.push([issue.location.lat, issue.location.lng]);
-
-      const pinColor =
-        issue.severity === 'Critical'
-          ? '#E11D48'
-          : issue.severity === 'High'
-          ? '#F97316'
-          : issue.severity === 'Medium'
-          ? '#F59E0B'
-          : '#10B981';
-
-      const customPin = L.divIcon({
-        className: 'custom-feed-pin',
-        html: `
-          <div style="position: relative; width: 34px; height: 42px; transform: translate(-50%, -100%); cursor: pointer;">
-            <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 14px; height: 5px; background: rgba(0,0,0,0.35); border-radius: 50%;"></div>
-            <svg width="34" height="42" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 0C5.37258 0 0 5.37258 0 12C0 21 12 32 12 32C12 32 24 21 24 12C24 5.37258 18.6274 0 12 0Z" fill="${pinColor}"/>
-              <circle cx="12" cy="12" r="5" fill="#FFFFFF"/>
-            </svg>
-          </div>
-        `,
-        iconSize: [34, 42],
-        iconAnchor: [17, 42]
-      });
-
-      const marker = L.marker([issue.location.lat, issue.location.lng], { icon: customPin });
-      
-      marker.bindTooltip(
-        `<div style="font-family: inherit; font-size: 11px;">
-          <strong style="color: #0f172a;">${issue.category}</strong><br/>
-          <span style="color: #64748b;">${issue.location.address || 'Civic location'}</span>
-        </div>`,
-        { direction: 'top', offset: [0, -38] }
-      );
-
-      marker.on('click', () => {
-        setActiveModalIssue(issue);
-      });
-
-      marker.addTo(markersGroupRef.current!);
-    });
-
-    if (validCoords.length > 0) {
-      const bounds = L.latLngBounds(validCoords);
-      leafletMapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-    }
-  }, [issues]);
-
-  // Center Live Map on Current Location
-  const handleLocateMyArea = () => {
-    setIsLocatingMap(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = Number(pos.coords.latitude.toFixed(5));
-          const lng = Number(pos.coords.longitude.toFixed(5));
-          setUserLocation({ lat, lng });
-
-          if (leafletMapRef.current) {
-            leafletMapRef.current.invalidateSize();
-            leafletMapRef.current.flyTo([lat, lng], 15, { duration: 1.5 });
-
-            if (userMarkerRef.current) {
-              userMarkerRef.current.setLatLng([lat, lng]);
-            } else {
-              const userPin = L.divIcon({
-                className: 'user-location-pulse',
-                html: `
-                  <div style="position: relative; width: 24px; height: 24px; transform: translate(-50%, -50%);">
-                    <span style="position: absolute; inset: -4px; border-radius: 50%; background: rgba(16, 185, 129, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
-                    <span style="position: relative; display: block; width: 16px; height: 16px; border-radius: 50%; background: #10B981; border: 2.5px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);"></span>
-                  </div>
-                `,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-              });
-              userMarkerRef.current = L.marker([lat, lng], { icon: userPin }).addTo(leafletMapRef.current);
-            }
-          }
-          setIsLocatingMap(false);
-        },
-        async () => {
-          try {
-            const ipData = await api.getIpLocation();
-            if (ipData && ipData.lat && ipData.lng) {
-              const lat = Number(ipData.lat.toFixed(5));
-              const lng = Number(ipData.lng.toFixed(5));
-              setUserLocation({ lat, lng });
-              if (leafletMapRef.current) {
-                leafletMapRef.current.invalidateSize();
-                leafletMapRef.current.flyTo([lat, lng], 14, { duration: 1.5 });
-              }
-            }
-          } catch (e) {
-            console.warn(e);
-          } finally {
-            setIsLocatingMap(false);
-          }
-        },
-        { enableHighAccuracy: true, timeout: 6000 }
-      );
-    } else {
-      api.getIpLocation().then((ipData) => {
-        if (ipData && ipData.lat && ipData.lng) {
-          leafletMapRef.current?.flyTo([ipData.lat, ipData.lng], 14);
-        }
-        setIsLocatingMap(false);
-      });
-    }
-  };
-
   const handleCardClick = (issue: Issue) => {
     setActiveModalIssue(issue);
-    if (leafletMapRef.current && issue.location?.lat && issue.location?.lng) {
-      leafletMapRef.current.flyTo([issue.location.lat, issue.location.lng], 16, { duration: 1.2 });
-    }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -385,15 +187,15 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
         <div>
-          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full mb-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            Real-Time GPS Incident Map & Civic Feed
+          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full mb-2 border border-emerald-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Real-Time Public Civic Feed
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Live Waste Incident Map
+            Public Waste Incidents Feed
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-xl">
-            Live interactive satellite and street map tracking all reported municipal waste issues, dispatch updates, and cleanup tickets.
+            Live public directory of reported municipal waste issues, dispatch progress, and cleanup tickets across city zones.
           </p>
         </div>
 
@@ -412,65 +214,6 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
           >
             + Report New Issue
           </button>
-        </div>
-      </div>
-
-      {/* Real Live Interactive Leaflet Map Showcase */}
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200 shadow-md mb-8 bg-slate-100">
-        
-        {/* Map Header Overlay Bar */}
-        <div className="absolute top-2.5 sm:top-4 left-2.5 sm:left-4 right-2.5 sm:right-4 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-          {/* Map / Satellite Mode Switcher */}
-          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-md border border-slate-200 p-0.5 sm:p-1 flex items-center pointer-events-auto">
-            <button
-              onClick={() => setFeedMapMode('map')}
-              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                feedMapMode === 'map' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Street
-            </button>
-            <button
-              onClick={() => setFeedMapMode('satellite')}
-              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                feedMapMode === 'satellite' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Satellite
-            </button>
-          </div>
-
-          {/* Quick Action: Locate My Area */}
-          <div className="flex items-center gap-2 pointer-events-auto">
-            <button
-              onClick={handleLocateMyArea}
-              disabled={isLocatingMap}
-              className="bg-white/95 backdrop-blur-md hover:bg-white text-slate-800 font-bold text-[11px] sm:text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer hover:text-emerald-700"
-            >
-              <Crosshair className={`w-3.5 h-3.5 text-emerald-600 ${isLocatingMap ? 'animate-spin' : ''}`} />
-              <span>{isLocatingMap ? 'Locating...' : 'Locate Area'}</span>
-            </button>
-            <div className="bg-slate-900/90 backdrop-blur-md text-white px-2.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md hidden sm:flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{issues.length} Active</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Live Leaflet Map Container */}
-        <div ref={mapContainerRef} className="w-full h-72 sm:h-96 z-0" />
-
-        {/* Bottom Legend */}
-        <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-4 z-10 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl border border-slate-200 text-[10px] sm:text-[11px] font-semibold text-slate-700 shadow-sm flex items-center gap-2 sm:gap-3 max-w-[90%] flex-wrap">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-rose-500"></span> Urgent
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span> Moderate
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Routine
-          </span>
         </div>
       </div>
 
@@ -669,7 +412,7 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
                   {new Date(issue.createdAt).toLocaleDateString()}
                 </span>
                 <span className="font-semibold text-emerald-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                  View Map & Details &rarr;
+                  View Incident Details &rarr;
                 </span>
               </div>
             </div>

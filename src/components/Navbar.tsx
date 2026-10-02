@@ -48,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 text-white w-full">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 text-slate-800 w-full shadow-xs">
         <div className="max-w-7xl mx-auto px-3.5 sm:px-6 h-16 flex items-center justify-between gap-2">
           
           {/* Brand: "EcoPulse" with Neon Emerald Accent */}
@@ -60,8 +60,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
               <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-white text-white" />
             </div>
             <div>
-              <span className="text-base sm:text-lg font-black tracking-tight text-white group-hover:text-emerald-300 transition-colors">
-                Eco<span className="text-emerald-400">Pulse</span>
+              <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors">
+                Eco<span className="text-emerald-600">Pulse</span>
               </span>
               <span className="block text-[8px] sm:text-[9px] uppercase tracking-widest font-bold text-slate-400 -mt-0.5 sm:-mt-1">
                 Civic Cleanliness
@@ -69,71 +69,62 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             </div>
           </button>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-xs sm:text-sm font-semibold text-slate-300">
+          {/* Desktop Navigation Links (Light Theme) */}
+          <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-xs sm:text-sm font-semibold text-slate-600">
             <button
               onClick={() => onSelectTab('home')}
-              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-white ${
-                currentTab === 'home' ? 'text-emerald-400 font-bold' : ''
+              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-slate-950 ${
+                currentTab === 'home' ? 'text-emerald-600 font-bold' : ''
               }`}
             >
               Home
               {currentTab === 'home' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full" />
               )}
             </button>
 
             <button
               onClick={() => onSelectTab('report')}
-              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-white ${
-                currentTab === 'report' ? 'text-emerald-400 font-bold' : ''
+              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-slate-950 ${
+                currentTab === 'report' ? 'text-emerald-600 font-bold' : ''
               }`}
             >
               Report Waste
               {currentTab === 'report' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full" />
               )}
             </button>
 
             <button
               onClick={() => onSelectTab('feed')}
-              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-white flex items-center gap-1.5 ${
-                currentTab === 'feed' ? 'text-emerald-400 font-bold' : ''
-              }`}
-            >
-              <span>Live Map</span>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              {currentTab === 'feed' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full" />
-              )}
-            </button>
-
-            <button
-              onClick={() => onSelectTab('feed')}
-              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-white flex items-center gap-1.5 ${
-                currentTab === 'feed' ? 'text-emerald-400 font-bold' : ''
+              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-slate-950 flex items-center gap-1.5 ${
+                currentTab === 'feed' ? 'text-emerald-600 font-bold' : ''
               }`}
             >
               <span>Public Feed</span>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+              </span>
               {activeIssueCount > 0 && (
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700/60 px-1.5 py-0.5 rounded-full font-mono-tabular">
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 rounded-full font-mono-tabular">
                   {activeIssueCount}
                 </span>
+              )}
+              {currentTab === 'feed' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full" />
               )}
             </button>
 
             <button
               onClick={() => onSelectTab('admin')}
-              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-white ${
-                currentTab === 'admin' ? 'text-emerald-400 font-bold' : ''
+              className={`transition-all duration-150 relative py-1 cursor-pointer hover:text-slate-950 ${
+                currentTab === 'admin' ? 'text-emerald-600 font-bold' : ''
               }`}
             >
               Dispatch Impact
               {currentTab === 'admin' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-full" />
               )}
             </button>
           </nav>
@@ -142,15 +133,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
           <div className="flex items-center gap-2 shrink-0">
             {isAuthenticated && user ? (
               <div className="flex items-center gap-1.5 sm:gap-2.5">
-                <div className="flex items-center gap-1.5 py-1 px-2 sm:py-1.5 sm:px-3 rounded-xl bg-slate-900 border border-slate-800">
+                <div className="flex items-center gap-1.5 py-1 px-2 sm:py-1.5 sm:px-3 rounded-xl bg-slate-100 border border-slate-200">
                   <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-emerald-600 text-white font-bold text-[11px] sm:text-xs flex items-center justify-center shrink-0">
                     {user.name.charAt(0)}
                   </div>
                   <div className="text-left max-w-[80px] sm:max-w-[110px]">
-                    <div className="text-[11px] sm:text-xs font-bold text-white truncate">
+                    <div className="text-[11px] sm:text-xs font-bold text-slate-900 truncate">
                       {user.name}
                     </div>
-                    <div className="hidden xs:block text-[9px] sm:text-[10px] font-medium text-emerald-400 truncate">
+                    <div className="hidden xs:block text-[9px] sm:text-[10px] font-medium text-emerald-700 truncate">
                       {user.role}
                     </div>
                   </div>
@@ -158,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
 
                 <button
                   onClick={logout}
-                  className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-slate-800 rounded-xl transition-colors cursor-pointer shrink-0"
+                  className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded-xl transition-colors cursor-pointer shrink-0"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
@@ -167,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
             ) : (
               <button
                 onClick={openLoginModal}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Sign In / Register</span>
@@ -177,12 +168,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
           </div>
         </div>
 
-        {/* Mobile Top Sub-Navigation (Fast Tab Access) */}
-        <div className="md:hidden border-t border-slate-800/80 bg-slate-950/98 px-2 py-1.5 flex items-center justify-around text-xs font-medium text-slate-400 overflow-x-auto scrollbar-none">
+        {/* Mobile Top Sub-Navigation (Light Theme) */}
+        <div className="md:hidden border-t border-slate-200 bg-white px-2 py-1.5 flex items-center justify-around text-xs font-medium text-slate-600 overflow-x-auto scrollbar-none">
           <button
             onClick={() => onSelectTab('home')}
             className={`min-h-[38px] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              currentTab === 'home' ? 'text-emerald-400 font-bold bg-slate-900' : 'hover:text-slate-200'
+              currentTab === 'home' ? 'text-emerald-700 font-bold bg-emerald-50' : 'hover:text-slate-900'
             }`}
           >
             <HomeIcon className="w-3.5 h-3.5" />
@@ -192,30 +183,30 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab }) => {
           <button
             onClick={() => onSelectTab('report')}
             className={`min-h-[38px] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              currentTab === 'report' ? 'text-emerald-400 font-bold bg-slate-900' : 'hover:text-slate-200'
+              currentTab === 'report' ? 'text-emerald-700 font-bold bg-emerald-50' : 'hover:text-slate-900'
             }`}
           >
-            <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <PlusCircle className="w-3.5 h-3.5 text-emerald-600" />
             <span>Report</span>
           </button>
           
           <button
             onClick={() => onSelectTab('feed')}
             className={`min-h-[38px] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              currentTab === 'feed' ? 'text-emerald-400 font-bold bg-slate-900' : 'hover:text-slate-200'
+              currentTab === 'feed' ? 'text-emerald-700 font-bold bg-emerald-50' : 'hover:text-slate-900'
             }`}
           >
-            <MapPin className="w-3.5 h-3.5 text-teal-400" />
-            <span>Live Map</span>
+            <Layers className="w-3.5 h-3.5 text-teal-600" />
+            <span>Feed</span>
           </button>
           
           <button
             onClick={() => onSelectTab('admin')}
             className={`min-h-[38px] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
-              currentTab === 'admin' ? 'text-emerald-400 font-bold bg-slate-900' : 'hover:text-slate-200'
+              currentTab === 'admin' ? 'text-emerald-700 font-bold bg-emerald-50' : 'hover:text-slate-900'
             }`}
           >
-            <Shield className="w-3.5 h-3.5 text-amber-400" />
+            <Shield className="w-3.5 h-3.5 text-amber-500" />
             <span>Dispatch</span>
           </button>
         </div>

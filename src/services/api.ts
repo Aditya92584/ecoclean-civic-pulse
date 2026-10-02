@@ -344,6 +344,21 @@ export const api = {
     };
   },
 
+  async searchLocations(query: string) {
+    try {
+      const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn('Geocode search error:', e);
+    }
+    return [];
+  },
+
   async getIpLocation() {
     try {
       const res = await fetch('/api/geocode/ip');

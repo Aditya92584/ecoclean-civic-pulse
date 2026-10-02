@@ -26,7 +26,8 @@ import {
   BrainCircuit,
   Wand2,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  Search
 } from 'lucide-react';
 import L from 'leaflet';
 import { IssueCategory, IssueSeverity } from '../types/issue';
@@ -306,20 +307,68 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onReportSubmitted, onN
     leafletMapRef.current.invalidateSize();
   }, [mapMode]);
 
-  // Real-Time GPS Detection using Browser Geolocation with Automatic IP Fallback
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+
+  // Common quick locality coordinates in Kanpur
+  const handleSelectQuickLocality = (name: string, lat: number, lng: number, street: string, area: string) => {
+    setCoords({ lat, lng });
+    setAddress(street);
+    setLandmark(area);
+    if (leafletMapRef.current) {
+      leafletMapRef.current.invalidateSize();
+      leafletMapRef.current.setView([lat, lng], 17, { animate: true });
+    }
+    if (markerRef.current) {
+      markerRef.current.setLatLng([lat, lng]);
+    }
+    setLocationSuccessMsg(`📍 Location Pinpoint: ${street}, ${area}`);
+    setTimeout(() => setLocationSuccessMsg(''), 5000);
+  };
+
+  // Search colony or landmark
+  const handleSearchLocation = async (queryText: string) => {
+    const q = queryText.trim();
+    if (!q) return;
+    setIsSearchingLocation(true);
+    setFormError('');
+
+    try {
+      // If user typed Yashoda Nagar, instantly jump to exact coordinates
+      if (q.toLowerCase().includes('yashoda')) {
+        handleSelectQuickLocality('Yashoda Nagar', 26.4255, 80.3452, 'Yashoda Nagar Bypass Road', 'Yashoda Nagar, Kanpur');
+        setIsSearchingLocation(false);
+        return;
+      }
+
+      const results = await api.searchLocations(`${q}, Kanpur`);
+      if (results && results.length > 0) {
+        const top = results[0];
+        handleSelectQuickLocality(top.streetAddress || q, top.lat, top.lng, top.streetAddress, top.areaLandmark);
+      } else {
+        setFormError(`Could not find "${q}". You can click directly on the map or pick Yashoda Nagar below.`);
+      }
+    } catch (e) {
+      console.warn('Location search error:', e);
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
+
+  // Real-Time GPS Detection using Browser Geolocation with High-Accuracy GPS
   const handleDetectLocation = () => {
     setIsLocating(true);
     setFormError('');
-    setLocationSuccessMsg('Connecting to GPS satellite and network telemetry...');
+    setLocationSuccessMsg('Locking onto satellite GPS coordinates...');
 
-    const applyLocation = async (lat: number, lng: number, source: 'gps' | 'ip') => {
+    const applyLocation = async (lat: number, lng: number, source: 'gps' | 'ip', accuracy?: number) => {
       const fixedLat = Number(lat.toFixed(5));
       const fixedLng = Number(lng.toFixed(5));
       setCoords({ lat: fixedLat, lng: fixedLng });
 
       if (leafletMapRef.current) {
         leafletMapRef.current.invalidateSize();
-        leafletMapRef.current.setView([fixedLat, fixedLng], 16, { animate: true });
+        leafletMapRef.current.setView([fixedLat, fixedLng], 17, { animate: true });
       }
       if (markerRef.current) {
         markerRef.current.setLatLng([fixedLat, fixedLng]);
@@ -331,8 +380,8 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onReportSubmitted, onN
         if (geo.areaLandmark) setLandmark(geo.areaLandmark);
         setLocationSuccessMsg(
           source === 'gps'
-            ? `📍 Precise Live GPS Detected: ${geo.streetAddress}`
-            : `📍 Network Location Detected: ${geo.streetAddress} (Click map to fine-tune)`
+            ? `📍 Precise Live GPS Locked (±${accuracy || 5}m): ${geo.streetAddress}`
+            : `📍 Location Detected: ${geo.streetAddress} (Fine-tune via map search below)`
         );
       }
       setIsLocating(false);
@@ -342,27 +391,27 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onReportSubmitted, onN
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          applyLocation(pos.coords.latitude, pos.coords.longitude, 'gps');
+          const acc = Math.round(pos.coords.accuracy || 0);
+          applyLocation(pos.coords.latitude, pos.coords.longitude, 'gps', acc);
         },
         async (err) => {
-          console.warn('GPS prompt dismissed or unavailable, activating IP telemetry fallback:', err.message);
+          console.warn('GPS prompt dismissed or timeout, activating network fallback:', err.message);
           try {
             const ipData = await api.getIpLocation();
             if (ipData && ipData.lat && ipData.lng) {
               await applyLocation(ipData.lat, ipData.lng, 'ip');
             } else {
-              setFormError('Unable to auto-detect position. Click on the map to set your location pin.');
+              setFormError('Unable to auto-detect position. Type "Yashoda Nagar" in the search box below.');
               setIsLocating(false);
             }
           } catch (e) {
-            setFormError('Could not detect location. Please click on the map.');
+            setFormError('Could not detect location. Please search or click on the map.');
             setIsLocating(false);
           }
         },
-        { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
-      // Browser does not support geolocation
       api.getIpLocation().then((ipData) => {
         if (ipData && ipData.lat && ipData.lng) {
           applyLocation(ipData.lat, ipData.lng, 'ip');
@@ -956,7 +1005,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onReportSubmitted, onN
             </span>
           </div>
 
-          {/* GPS Header Banner */}
+          {/* GPS Auto-Detect Header Banner */}
           <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -967,7 +1016,7 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onReportSubmitted, onN
                   Real-Time GPS Location
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Detect live GPS or click anywhere on the Google Map to pinpoint waste.
+                  Detect live GPS or search colony below to pinpoint waste accurately.
                 </div>
               </div>
             </div>
@@ -981,6 +1030,70 @@ export const ReportIssue: React.FC<ReportIssueProps> = ({ onReportSubmitted, onN
               <Crosshair className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
               <span>{isLocating ? 'Detecting Live GPS...' : 'Detect Current Location'}</span>
             </button>
+          </div>
+
+          {/* Colony / Locality Search Bar with Yashoda Nagar One-Tap Access */}
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Type colony / area (e.g. Yashoda Nagar, Kidwai Nagar, Kanpur)..."
+                  value={locationSearchQuery}
+                  onChange={(e) => setLocationSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchLocation(locationSearchQuery);
+                    }
+                  }}
+                  className="w-full bg-slate-50 focus:bg-white border border-slate-200 focus:border-emerald-600 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSearchLocation(locationSearchQuery)}
+                disabled={isSearchingLocation}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shrink-0 shadow-xs"
+              >
+                {isSearchingLocation ? 'Searching...' : 'Search Map'}
+              </button>
+            </div>
+
+            {/* Quick Locality Chips for Kanpur & Nearby */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+              <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">Popular Localities:</span>
+              <button
+                type="button"
+                onClick={() => handleSelectQuickLocality('Yashoda Nagar', 26.4255, 80.3452, 'Yashoda Nagar Bypass Road', 'Yashoda Nagar, Kanpur')}
+                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1 shadow-xs"
+              >
+                <MapPin className="w-3 h-3 text-emerald-600" />
+                📍 Yashoda Nagar, Kanpur
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectQuickLocality('Naubasta', 26.4065, 80.3240, 'Hamirpur Road, Naubasta', 'Naubasta, Kanpur')}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                Naubasta
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectQuickLocality('Kidwai Nagar', 26.4380, 80.3340, 'Kidwai Nagar Bypass', 'Kidwai Nagar, Kanpur')}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                Kidwai Nagar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectQuickLocality('Kanpur Central', 26.4539, 80.3510, 'Station Road, Cantonment', 'Kanpur Central Area')}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                Kanpur Central
+              </button>
+            </div>
           </div>
 
           {/* Notification when location is successfully detected */}
