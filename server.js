@@ -1,243 +1,200 @@
 /**
  * ============================================================================
- * EcoClean Full-Stack Backend Server (server.js)
- * Single-file Node.js Express server with Mongoose & Dual-Mode Fallback
+ * EcoPulse Full-Stack Backend Server (server.js - ES Module)
+ * Compatible with "type": "module" in package.json and Node.js 22/24+
  * ============================================================================
- * 
- * Includes:
- * 1. Express application configuration with CORS & JSON body parsing
- * 2. MongoDB Atlas Mongoose connection & in-memory fallback
- * 3. Mongoose Models: User & Issue
- * 4. REST Endpoints:
- *    - POST /api/issues (Create new waste report)
- *    - GET  /api/issues (Query & filter reported issues)
- *    - PATCH /api/issues/:id (Update complaint status or worker squad)
- *    - DELETE /api/issues/:id (Archive issue)
- *    - GET  /api/stats (Aggregated metrics)
- *    - POST /api/auth/login (User authentication)
- *    - POST /api/auth/register (Citizen & staff registration)
  */
 
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-const { GoogleGenAI } = require('@google/genai');
-require('dotenv').config({ override: true });
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { GoogleGenAI } from '@google/genai';
+import dotenv from 'dotenv';
+
+dotenv.config({ override: true });
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use(express.json({ limit: '20mb' }));
 
-// ============================================================================
-// 1. Mongoose Schemas & Models
-// ============================================================================
+// -------------------------------------------------------------
+// MongoDB Atlas Connection & In-Memory Fallback State
+// -------------------------------------------------------------
+let isMongoConnected = false;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// Timeline Subdocument Schema
-const TimelineSchema = new mongoose.Schema(
-  {
-    phase: { type: String, required: true },
-    timestamp: { type: Date, default: Date.now },
-    note: { type: String, default: '' },
-    actor: { type: String, default: 'System Dispatch' }
-  },
-  { _id: false }
-);
+if (MONGODB_URI) {
+  mongoose
+    .connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
+    })
+    .then(() => {
+      isMongoConnected = true;
+      console.log('✅ Connected to MongoDB Atlas successfully.');
+    })
+    .catch((err) => {
+      console.warn('⚠️ MongoDB Atlas connection failed, running in-memory mode:', err.message);
+      isMongoConnected = false;
+    });
+} else {
+  console.log('ℹ️ No MONGODB_URI provided in environment. Using in-memory store.');
+}
 
-// Issue Model Schema
+// -------------------------------------------------------------
+// Mongoose Schemas & Models
+// -------------------------------------------------------------
 const IssueSchema = new mongoose.Schema(
   {
-    id: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true
-    },
-    category: {
-      type: String,
-      required: true,
-      enum: [
-        'Illegal Dumping',
-        'Overflowing Bin',
-        'Hazardous Chemical Waste',
-        'Biohazard / Medical Waste',
-        'Construction Debris',
-        'Plastic Accumulation',
-        'Blocked Drainage',
-        'Electronic E-Waste'
-      ]
-    },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 1000
-    },
-    severity: {
-      type: String,
-      required: true,
-      enum: ['Low', 'Medium', 'High', 'Critical'],
-      default: 'Medium'
-    },
-    status: {
-      type: String,
-      required: true,
-      enum: ['Pending', 'Assigned', 'In-Progress', 'Resolved'],
-      default: 'Pending',
-      index: true
-    },
+    id: { type: String, required: true, unique: true },
+    category: { type: String, required: true },
+    description: { type: String, required: true },
+    severity: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], default: 'Medium' },
+    status: { type: String, enum: ['Pending', 'In-Progress', 'Resolved'], default: 'Pending' },
     location: {
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
       address: { type: String, required: true },
-      landmark: { type: String, default: '' }
+      landmark: { type: String, default: '' },
     },
-    photoUrl: {
-      type: String,
-      default: ''
-    },
-    assignedWorker: {
-      type: String,
-      default: ''
-    },
-    reporterName: {
-      type: String,
-      default: 'Anonymous Citizen'
-    },
-    reporterPhone: {
-      type: String,
-      default: ''
-    },
-    timeline: {
-      type: [TimelineSchema],
-      default: []
-    },
-    resolvedAt: {
-      type: Date
-    }
-  },
-  {
-    timestamps: true
-  }
-);
-
-IssueSchema.index({ status: 1, severity: 1 });
-IssueSchema.index({ createdAt: -1 });
-
-const Issue = mongoose.models.Issue || mongoose.model('Issue', IssueSchema);
-
-// User Model Schema (for authentication)
-const UserSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true },
-    role: {
-      type: String,
-      required: true,
-      enum: ['Citizen', 'Admin', 'Sanitation Staff'],
-      default: 'Citizen'
-    },
-    avatar: { type: String, default: '' },
-    squad: { type: String, default: '' }
-  },
-  {
-    timestamps: true
-  }
-);
-
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
-
-// LoginLog Model Schema (User Audit / Login Tracking)
-const LoginLogSchema = new mongoose.Schema(
-  {
-    email: { type: String, required: true, trim: true, lowercase: true, index: true },
-    name: { type: String, default: 'Unknown User', trim: true },
-    role: { type: String, required: true, enum: ['Citizen', 'Admin', 'Sanitation Staff'] },
-    loginMethod: { type: String, default: 'Password' },
-    timestamp: { type: Date, default: Date.now, index: true },
-    ipAddress: { type: String, default: '127.0.0.1' },
-    userAgent: { type: String, default: '' }
+    photoUrl: { type: String, default: '' },
+    reporterName: { type: String, default: 'Anonymous Citizen' },
+    reporterPhone: { type: String, default: '' },
+    assignedWorker: { type: String, default: null },
+    resolvedAt: { type: String, default: null },
+    timeline: [
+      {
+        phase: { type: String, required: true },
+        timestamp: { type: String, required: true },
+        note: { type: String, default: '' },
+        actor: { type: String, default: 'System' },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-LoginLogSchema.index({ timestamp: -1 });
-
-const LoginLog = mongoose.models.LoginLog || mongoose.model('LoginLog', LoginLogSchema);
-
-// ============================================================================
-// 2. In-Memory Mock Store (Active when MongoDB is not connected)
-// ============================================================================
-
-let inMemoryIssues = [];
-
-// Seed Demo Users
-let inMemoryUsers = [
+const UserSchema = new mongoose.Schema(
   {
-    id: 'usr-adm-01',
-    name: 'Municipal Admin',
-    email: 'admin@ecoclean.gov',
-    password: 'admin123',
-    role: 'Admin',
-    avatar: ''
-  }
+    id: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['Citizen', 'Staff', 'Admin'], default: 'Citizen' },
+    zone: { type: String, default: 'Central Metro Zone' },
+  },
+  { timestamps: true }
+);
+
+const Issue = mongoose.models.Issue || mongoose.model('Issue', IssueSchema);
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// In-Memory Seed Storage (Fallback when MongoDB is disconnected)
+let inMemoryIssues = [
+  {
+    id: 'WASTE-2026-001',
+    category: 'Overflowing Bin',
+    description: 'Public waste bin overflow at Central Metro Station. Trash spilling onto pedestrian walkway.',
+    severity: 'Medium',
+    status: 'In-Progress',
+    location: {
+      lat: 28.6139,
+      lng: 77.2090,
+      address: 'Central Station Exit 2, Connaught Place',
+      landmark: 'Near Ticket Counter',
+    },
+    photoUrl: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&w=800&q=80',
+    reporterName: 'Aarav Mehta',
+    reporterPhone: '+91 98765 43210',
+    assignedWorker: 'Green Route 4 (Elena Rostova)',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    timeline: [
+      {
+        phase: 'Issue Reported',
+        timestamp: new Date().toISOString(),
+        note: 'Reported by citizen with photo evidence.',
+        actor: 'Citizen',
+      },
+      {
+        phase: 'Dispatch Assigned',
+        timestamp: new Date().toISOString(),
+        note: 'Assigned to Green Route 4 crew.',
+        actor: 'Admin Dispatch',
+      },
+    ],
+  },
+  {
+    id: 'WASTE-2026-002',
+    category: 'Illegal Dumping',
+    description: 'Bulk construction debris dumped on open ground near school lane.',
+    severity: 'Critical',
+    status: 'Pending',
+    location: {
+      lat: 28.6289,
+      lng: 77.2195,
+      address: 'Lane 4, Model Town Extension',
+      landmark: 'Behind City Convent School',
+    },
+    photoUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80',
+    reporterName: 'Priya Sharma',
+    reporterPhone: '+91 98111 22334',
+    assignedWorker: null,
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000).toISOString(),
+    timeline: [
+      {
+        phase: 'Issue Reported',
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        note: 'Urgent priority marked by citizen.',
+        actor: 'Citizen',
+      },
+    ],
+  },
 ];
 
-let inMemoryLoginLogs = [];
+let inMemoryUsers = [
+  {
+    id: 'u-admin-1',
+    name: 'Elena Rostova',
+    email: 'admin@ecopulse.gov',
+    password: 'password123',
+    role: 'Admin',
+    zone: 'Headquarters Dispatch',
+  },
+  {
+    id: 'u-staff-1',
+    name: 'Marcus Vance',
+    email: 'staff@ecopulse.gov',
+    password: 'password123',
+    role: 'Staff',
+    zone: 'North Riverfront & Metro Hub',
+  },
+];
 
-// ============================================================================
-// 3. Database Connection
-// ============================================================================
+// -------------------------------------------------------------
+// REST API Endpoints
+// -------------------------------------------------------------
 
-let isMongoConnected = false;
+// GET /api/health
+app.get('/api/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    mode: isMongoConnected ? 'mongodb' : 'in-memory',
+    timestamp: new Date().toISOString(),
+  });
+});
 
-const connectDB = async () => {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    console.log('ℹ️ MONGODB_URI not found in environment.');
-    console.log('ℹ️ Running in persistent In-Memory Array mode.');
-    return;
-  }
-
-  try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000
-    });
-    isMongoConnected = true;
-    console.log('✅ Connected to MongoDB Atlas successfully.');
-
-    // Ensure default municipal admin account exists in database
-    const adminUser = await User.findOne({ email: 'admin@ecoclean.gov' });
-    if (!adminUser) {
-      await User.create({
-        name: 'Municipal Admin',
-        email: 'admin@ecoclean.gov',
-        password: 'admin123',
-        role: 'Admin'
-      });
-      console.log('👤 Created default admin account: admin@ecoclean.gov');
-    }
-  } catch (err) {
-    console.warn('⚠️ MongoDB Atlas connection notice:', err.message);
-    console.log('ℹ️ Operating in persistent in-memory fallback mode.');
-    isMongoConnected = false;
-  }
-};
-
-connectDB();
-
-// ============================================================================
-// 4. REST API Routes
-// ============================================================================
-
-/**
- * GET /api/issues
- * Returns list of reported issues with optional status/severity/category/search filters
- */
+// GET /api/issues
 app.get('/api/issues', async (req, res) => {
   try {
     const { status, severity, category, search } = req.query;
@@ -249,108 +206,88 @@ app.get('/api/issues', async (req, res) => {
       if (category && category !== 'All') query.category = category;
       if (search) {
         query.$or = [
-          { description: { $regex: search, $options: 'i' } },
           { id: { $regex: search, $options: 'i' } },
-          { 'location.address': { $regex: search, $options: 'i' } }
+          { description: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } },
+          { 'location.address': { $regex: search, $options: 'i' } },
         ];
       }
       const issues = await Issue.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, count: issues.length, data: issues, source: 'mongodb' });
     }
 
-    // In-Memory Query
     let filtered = [...inMemoryIssues];
     if (status && status !== 'All') filtered = filtered.filter((i) => i.status === status);
     if (severity && severity !== 'All') filtered = filtered.filter((i) => i.severity === severity);
     if (category && category !== 'All') filtered = filtered.filter((i) => i.category === category);
     if (search) {
-      const q = search.toLowerCase();
+      const q = String(search).toLowerCase();
       filtered = filtered.filter(
         (i) =>
-          i.description.toLowerCase().includes(q) ||
           i.id.toLowerCase().includes(q) ||
+          i.description.toLowerCase().includes(q) ||
+          i.category.toLowerCase().includes(q) ||
           i.location.address.toLowerCase().includes(q)
       );
     }
     filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
     res.json({ success: true, count: filtered.length, data: filtered, source: 'in-memory' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/**
- * POST /api/issues
- * Receives report data (category, location, photo, severity) and creates new incident
- */
+// POST /api/issues
 app.post('/api/issues', async (req, res) => {
   try {
-    const {
-      category,
-      description,
-      severity = 'Medium',
-      location,
-      photoUrl,
-      reporterName = 'Anonymous Citizen',
-      reporterPhone = ''
-    } = req.body;
-
-    if (!category || !location || !location.lat || !location.lng || !location.address) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed: category, location.lat, location.lng, and location.address are required.'
-      });
+    const { category, description, severity = 'Medium', location, photoUrl = '', reporterName = 'Anonymous Citizen', reporterPhone = '' } = req.body;
+    if (!category || !description || !location || !location.address) {
+      return res.status(400).json({ success: false, error: 'category, description, and location are required' });
     }
 
-    const uniqueId = `WASTE-2026-${String(Math.floor(100 + Math.random() * 900))}`;
+    const uniqueId = `WASTE-2026-${Math.floor(100 + Math.random() * 900)}`;
     const nowIso = new Date().toISOString();
 
-    const newIssuePayload = {
+    const newIssueData = {
       id: uniqueId,
       category,
-      description: description || 'Waste incident reported by citizen.',
+      description,
       severity,
       status: 'Pending',
       location: {
-        lat: Number(location.lat),
-        lng: Number(location.lng),
+        lat: Number(location.lat) || 28.6139,
+        lng: Number(location.lng) || 77.2090,
         address: location.address,
-        landmark: location.landmark || ''
+        landmark: location.landmark || '',
       },
-      photoUrl: photoUrl || '',
-      assignedWorker: '',
+      photoUrl,
       reporterName,
       reporterPhone,
+      assignedWorker: null,
+      resolvedAt: null,
       timeline: [
         {
           phase: 'Issue Reported',
           timestamp: nowIso,
           note: 'Civic complaint submitted with GPS location and photo evidence.',
-          actor: reporterName || 'Citizen'
-        }
+          actor: reporterName,
+        },
       ],
-      createdAt: nowIso,
-      updatedAt: nowIso
     };
 
     if (isMongoConnected) {
-      const issueDoc = new Issue(newIssuePayload);
-      const saved = await issueDoc.save();
-      return res.status(201).json({ success: true, data: saved, source: 'mongodb' });
+      const created = await Issue.create(newIssueData);
+      return res.status(201).json({ success: true, data: created, source: 'mongodb' });
     }
 
-    inMemoryIssues.unshift(newIssuePayload);
-    res.status(201).json({ success: true, data: newIssuePayload, source: 'in-memory' });
+    inMemoryIssues.unshift(newIssueData);
+    res.status(201).json({ success: true, data: newIssueData, source: 'in-memory' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/**
- * PATCH /api/issues/:id
- * Updates complaint status or assigned worker squad
- */
+// PATCH /api/issues/:id
 app.patch('/api/issues/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -358,467 +295,192 @@ app.patch('/api/issues/:id', async (req, res) => {
     const nowIso = new Date().toISOString();
 
     if (isMongoConnected) {
-      const existing = await Issue.findOne({ id });
-      if (!existing) {
-        return res.status(404).json({ success: false, error: `Issue ${id} not found` });
-      }
+      const issue = await Issue.findOne({ id });
+      if (!issue) return res.status(404).json({ success: false, error: 'Issue not found' });
 
-      if (status) existing.status = status;
-      if (assignedWorker !== undefined) existing.assignedWorker = assignedWorker;
-      if (status === 'Resolved' && !existing.resolvedAt) {
-        existing.resolvedAt = new Date();
-      }
+      if (status) issue.status = status;
+      if (assignedWorker !== undefined) issue.assignedWorker = assignedWorker;
+      if (status === 'Resolved') issue.resolvedAt = nowIso;
 
-      let phaseName = '';
-      if (status === 'Assigned') phaseName = 'Triaged & Assigned';
-      else if (status === 'In-Progress') phaseName = 'Crew Dispatched';
-      else if (status === 'Resolved') phaseName = 'Cleared & Resolved';
-      else if (status === 'Pending') phaseName = 'Reopened / Pending';
-
-      if (phaseName) {
-        existing.timeline.push({
-          phase: phaseName,
-          timestamp: new Date(),
-          note: note || (assignedWorker ? `Assigned to ${assignedWorker}` : `Status updated to ${status}`),
-          actor: 'Municipal Dispatch'
+      if (status) {
+        issue.timeline.push({
+          phase: status === 'Resolved' ? 'Cleared & Resolved' : status === 'In-Progress' ? 'Dispatched to Crew' : 'Pending Review',
+          timestamp: nowIso,
+          note: note || `Status updated to ${status}.`,
+          actor: 'Municipal Dispatch',
         });
       }
-
-      const updated = await existing.save();
-      return res.json({ success: true, data: updated, source: 'mongodb' });
+      await issue.save();
+      return res.json({ success: true, data: issue, source: 'mongodb' });
     }
 
-    // In-Memory Update
-    const index = inMemoryIssues.findIndex((i) => i.id === id);
-    if (index === -1) {
-      return res.status(404).json({ success: false, error: `Issue ${id} not found` });
-    }
+    const idx = inMemoryIssues.findIndex((i) => i.id === id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Issue not found' });
 
-    const current = inMemoryIssues[index];
-    if (status) current.status = status;
-    if (assignedWorker !== undefined) current.assignedWorker = assignedWorker;
-    if (status === 'Resolved') current.resolvedAt = nowIso;
-    current.updatedAt = nowIso;
-
-    let phaseName = '';
-    if (status === 'Assigned') phaseName = 'Triaged & Assigned';
-    else if (status === 'In-Progress') phaseName = 'Crew Dispatched';
-    else if (status === 'Resolved') phaseName = 'Cleared & Resolved';
-    else if (status === 'Pending') phaseName = 'Reopened / Pending';
-
-    if (phaseName) {
-      current.timeline.push({
-        phase: phaseName,
+    const item = inMemoryIssues[idx];
+    if (status) item.status = status;
+    if (assignedWorker !== undefined) item.assignedWorker = assignedWorker;
+    if (status === 'Resolved') item.resolvedAt = nowIso;
+    item.updatedAt = nowIso;
+    if (status) {
+      item.timeline.push({
+        phase: status === 'Resolved' ? 'Cleared & Resolved' : status === 'In-Progress' ? 'Dispatched to Crew' : 'Pending Review',
         timestamp: nowIso,
-        note: note || (assignedWorker ? `Assigned to ${assignedWorker}` : `Status updated to ${status}`),
-        actor: 'Municipal Dispatch'
+        note: note || `Status updated to ${status}.`,
+        actor: 'Municipal Dispatch',
       });
     }
-
-    res.json({ success: true, data: current, source: 'in-memory' });
+    res.json({ success: true, data: item, source: 'in-memory' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/**
- * DELETE /api/issues/:id
- * Archives / deletes an issue record
- */
-app.delete('/api/issues/:id', async (req, res) => {
+// GET /api/stats
+app.get('/api/stats', async (_req, res) => {
   try {
-    const { id } = req.params;
-
     if (isMongoConnected) {
-      const deleted = await Issue.findOneAndDelete({ id });
-      if (!deleted) return res.status(404).json({ success: false, error: 'Issue not found' });
-      return res.json({ success: true, message: `Issue ${id} deleted`, source: 'mongodb' });
+      const total = await Issue.countDocuments();
+      const resolved = await Issue.countDocuments({ status: 'Resolved' });
+      const pending = await Issue.countDocuments({ status: 'Pending' });
+      const inProgress = await Issue.countDocuments({ status: 'In-Progress' });
+      return res.json({ success: true, data: { total, resolved, pending, inProgress } });
     }
-
-    const index = inMemoryIssues.findIndex((i) => i.id === id);
-    if (index === -1) return res.status(404).json({ success: false, error: 'Issue not found' });
-    inMemoryIssues.splice(index, 1);
-    res.json({ success: true, message: `Issue ${id} deleted`, source: 'in-memory' });
+    const total = inMemoryIssues.length;
+    const resolved = inMemoryIssues.filter((i) => i.status === 'Resolved').length;
+    const pending = inMemoryIssues.filter((i) => i.status === 'Pending').length;
+    const inProgress = inMemoryIssues.filter((i) => i.status === 'In-Progress').length;
+    res.json({ success: true, data: { total, resolved, pending, inProgress } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/**
- * GET /api/stats
- * Dashboard statistical metrics for active issues and resolution rate
- */
-app.get('/api/stats', async (req, res) => {
+// Auth Routes: Register & Login
+app.post('/api/auth/register', async (req, res) => {
   try {
-    let issues = inMemoryIssues;
+    const { name, email, password, role = 'Citizen', zone = 'Central Zone' } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'name, email, and password are required' });
+    }
+    const cleanEmail = email.toLowerCase().trim();
+
     if (isMongoConnected) {
-      issues = await Issue.find();
+      const exists = await User.findOne({ email: cleanEmail });
+      if (exists) return res.status(409).json({ success: false, error: 'User with this email already registered' });
+      const user = await User.create({ id: `usr-${Date.now()}`, name, email: cleanEmail, password, role, zone });
+      return res.status(201).json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role, zone: user.zone } });
     }
 
-    const total = issues.length;
-    const pending = issues.filter((i) => i.status === 'Pending').length;
-    const assigned = issues.filter((i) => i.status === 'Assigned').length;
-    const inProgress = issues.filter((i) => i.status === 'In-Progress').length;
-    const resolved = issues.filter((i) => i.status === 'Resolved').length;
-    const critical = issues.filter((i) => i.severity === 'Critical').length;
+    if (inMemoryUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
+      return res.status(409).json({ success: false, error: 'User with this email already registered' });
+    }
+    const newUser = { id: `usr-${Date.now()}`, name, email: cleanEmail, password, role, zone };
+    inMemoryUsers.push(newUser);
+    res.status(201).json({ success: true, data: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, zone: newUser.zone } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ success: false, error: 'Email and password required' });
+    const cleanEmail = email.toLowerCase().trim();
+
+    if (isMongoConnected) {
+      const user = await User.findOne({ email: cleanEmail, password });
+      if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return res.json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role, zone: user.zone } });
+    }
+
+    const user = inMemoryUsers.find((u) => u.email.toLowerCase() === cleanEmail && u.password === password);
+    if (!user) return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    res.json({ success: true, data: { id: user.id, name: user.name, email: user.email, role: user.role, zone: user.zone } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Geocoding Proxy Routes
+app.get('/api/geocode/reverse', async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    if (!lat || !lng) return res.status(400).json({ success: false, error: 'lat and lng required' });
+
+    const osmUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
+    const response = await fetch(osmUrl, {
+      headers: { 'User-Agent': 'EcoPulse Civic Dispatch/1.0' },
+    });
+    if (!response.ok) return res.status(502).json({ success: false, error: 'Geocoding service error' });
+
+    const data = await response.json();
+    const addr = data.address || {};
+    const road = addr.road || addr.street || addr.pedestrian || addr.neighbourhood || addr.suburb || '';
+    const houseNumber = addr.house_number ? `${addr.house_number} ` : '';
+    const street = `${houseNumber}${road}`.trim() || data.name || `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
+    const landmark = [addr.suburb || addr.quarter, addr.city || addr.town || addr.village || addr.state].filter(Boolean).join(', ') || 'Municipal Area';
 
     res.json({
       success: true,
-      stats: {
-        total,
-        pending,
-        assigned,
-        inProgress,
-        activeCrewWork: assigned + inProgress,
-        resolved,
-        critical,
-        resolvedRate: total > 0 ? Math.round((resolved / total) * 100) : 0,
-        activeWorkers: 8,
-        isMongoConnected
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * POST /api/auth/register
- * Only registered users can log in
- */
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { name, email, password, role = 'Citizen' } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = name.trim();
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Web Browser';
-
-    if (isMongoConnected) {
-      const existing = await User.findOne({ email: cleanEmail });
-      if (existing) {
-        return res.status(400).json({
-          success: false,
-          error: 'An account with this email already exists. Please switch to Sign In.'
-        });
-      }
-
-      const newUser = await User.create({
-        name: cleanName,
-        email: cleanEmail,
-        password,
-        role
-      });
-
-      const logDoc = new LoginLog({
-        email: cleanEmail,
-        name: cleanName,
-        role,
-        loginMethod: 'Account Registration',
-        timestamp: new Date(),
-        ipAddress: clientIp,
-        userAgent
-      });
-      await logDoc.save();
-
-      return res.status(201).json({
-        success: true,
-        user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role },
-        source: 'mongodb'
-      });
-    }
-
-    const exists = inMemoryUsers.some((u) => u.email === cleanEmail);
-    if (exists) {
-      return res.status(400).json({
-        success: false,
-        error: 'An account with this email already exists. Please switch to Sign In.'
-      });
-    }
-
-    const createdUser = { id: `usr-${Date.now()}`, name: cleanName, email: cleanEmail, password, role };
-    inMemoryUsers.push(createdUser);
-
-    inMemoryLoginLogs.unshift({
-      email: cleanEmail,
-      name: cleanName,
-      role,
-      loginMethod: 'Account Registration',
-      timestamp: new Date().toISOString(),
-      ipAddress: clientIp,
-      userAgent
-    });
-
-    res.status(201).json({ success: true, user: createdUser, source: 'in-memory' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * POST /api/auth/login
- * Strict Login: Only registered people can log in. Returns error if not registered.
- */
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password, loginMethod = 'Password' } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required.' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Web Browser';
-
-    if (isMongoConnected) {
-      const user = await User.findOne({ email: cleanEmail });
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          error: 'This account is not registered. Please create an account in the Register tab first.'
-        });
-      }
-
-      if (user.password && user.password !== password) {
-        return res.status(401).json({
-          success: false,
-          error: 'Incorrect password. Please try again.'
-        });
-      }
-
-      const logDoc = new LoginLog({
-        email: cleanEmail,
-        name: user.name,
-        role: user.role,
-        loginMethod,
-        timestamp: new Date(),
-        ipAddress: clientIp,
-        userAgent
-      });
-      await logDoc.save();
-
-      return res.json({
-        success: true,
-        user: { id: user._id, name: user.name, email: user.email, role: user.role },
-        source: 'mongodb'
-      });
-    }
-
-    const found = inMemoryUsers.find((u) => u.email === cleanEmail);
-    if (!found) {
-      return res.status(401).json({
-        success: false,
-        error: 'This account is not registered. Please create an account in the Register tab first.'
-      });
-    }
-
-    if (found.password && found.password !== password) {
-      return res.status(401).json({
-        success: false,
-        error: 'Incorrect password. Please try again.'
-      });
-    }
-
-    inMemoryLoginLogs.unshift({
-      email: cleanEmail,
-      name: found.name,
-      role: found.role,
-      loginMethod,
-      timestamp: new Date().toISOString(),
-      ipAddress: clientIp,
-      userAgent
-    });
-
-    res.json({ success: true, user: found, source: 'in-memory' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * POST /api/auth/log
- * Explicit audit trail logger for role switching or session events
- */
-app.post('/api/auth/log', async (req, res) => {
-  try {
-    const { email, name, role, loginMethod = 'Role Switcher' } = req.body;
-    if (!email || !role) {
-      return res.status(400).json({ success: false, error: 'Email and role are required' });
-    }
-
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Web Browser';
-    const resolvedName = name || email.split('@')[0];
-
-    const logEntry = {
-      email: email.toLowerCase(),
-      name: resolvedName,
-      role,
-      loginMethod,
-      timestamp: new Date(),
-      ipAddress: clientIp,
-      userAgent
-    };
-
-    if (isMongoConnected) {
-      const savedLog = await new LoginLog(logEntry).save();
-      return res.status(201).json({ success: true, data: savedLog, source: 'mongodb' });
-    }
-
-    inMemoryLoginLogs.unshift({
-      ...logEntry,
-      timestamp: new Date().toISOString()
-    });
-    res.status(201).json({ success: true, data: logEntry, source: 'in-memory' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * GET /api/auth/logs
- * Retrieve live login activity audit trail for Admin Dashboard
- */
-app.get('/api/auth/logs', async (req, res) => {
-  try {
-    if (isMongoConnected) {
-      const logs = await LoginLog.find().sort({ timestamp: -1 }).limit(100);
-      return res.json({ success: true, count: logs.length, data: logs, source: 'mongodb' });
-    }
-
-    res.json({ success: true, count: inMemoryLoginLogs.length, data: inMemoryLoginLogs, source: 'in-memory' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * POST /api/ai/analyze-waste
- * Computer Vision and Environmental Safety AI Analyzer
- */
-app.post('/api/ai/analyze-waste', async (req, res) => {
-  try {
-    const { imageBase64, mimeType = 'image/jpeg' } = req.body;
-    if (!imageBase64) {
-      return res.status(400).json({ success: false, error: 'imageBase64 is required' });
-    }
-
-    let cleanBase64 = imageBase64;
-    let detectedMime = mimeType;
-    const match = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
-    if (match) {
-      detectedMime = match[1];
-      cleanBase64 = match[2];
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.json({
-        success: true,
-        data: {
-          waste_category: 'overflowing_bin',
-          category_label: 'Overflowing Public Bin',
-          severity: 'medium',
-          urgency: 'routine',
-          confidence_score: 0.92,
-          detailed_description: 'Municipal waste receptacle filled beyond capacity with mixed refuse spilling onto walkway. Poses pedestrian obstruction and potential vector attraction.',
-          suggested_action: 'Schedule standard municipal garbage truck for bin emptying and peripheral litter sweep.'
-        }
-      });
-    }
-
-    const ai = new GoogleGenAI();
-    const systemPrompt = `You are an expert computer vision and environmental safety AI for the EcoClean Waste Management platform.
-Your task is to analyze images of reported municipal waste issues and provide a structured JSON response.
-Strict Rules:
-Always return ONLY a valid JSON object. Do not include markdown code block formatting (like \`\`\`json), intro text, or explanation outside the JSON.
-Analyze the image to detect:
-waste_category: Choose exact string from ["overflowing_bin", "hazardous", "uncollected", "dumpster_full", "general_litter"]
-category_label: Human-readable display title (e.g. "Overflowing Public Bin")
-severity: Choose exact string from ["low", "medium", "high", "critical"]
-urgency: Choose exact string from ["routine", "urgent", "emergency"]
-confidence_score: A number between 0.00 and 1.00
-detailed_description: A concise 2-3 sentence technical description of the detected waste condition and potential public hazard.
-suggested_action: Recommended municipal cleanup response (e.g., "Dispatch biohazard team", "Schedule standard garbage truck").
-JSON Response Schema:
-{
-"waste_category": "string",
-"category_label": "string",
-"severity": "string",
-"urgency": "string",
-"confidence_score": 0.00,
-"detailed_description": "string",
-"suggested_action": "string"
-}`;
-
-    const geminiRes = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              inlineData: {
-                data: cleanBase64,
-                mimeType: detectedMime
-              }
-            },
-            {
-              text: 'Analyze this waste issue image according to your instructions and return the JSON response.'
-            }
-          ]
-        }
-      ],
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const responseText = geminiRes.text || '{}';
-    let parsed;
-    try {
-      parsed = JSON.parse(responseText.trim().replace(/^```json\s*/i, '').replace(/```\s*$/i, ''));
-    } catch {
-      parsed = JSON.parse(responseText.trim());
-    }
-
-    return res.json({ success: true, data: parsed });
-  } catch (err) {
-    console.error('AI waste analysis error:', err);
-    return res.json({
-      success: true,
       data: {
-        waste_category: 'overflowing_bin',
-        category_label: 'Overflowing Public Bin',
-        severity: 'medium',
-        urgency: 'routine',
-        confidence_score: 0.88,
-        detailed_description: 'Visual inspection indicates overflowing municipal refuse container with debris spreading to adjacent public surface. Presents sanitation and pedestrian hazard.',
-        suggested_action: 'Dispatch municipal sanitation crew for container clearance.'
-      }
+        formattedAddress: data.display_name,
+        streetAddress: street,
+        areaLandmark: landmark,
+        city: addr.city || addr.town || '',
+        state: addr.state || '',
+      },
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ============================================================================
-// 5. Server Startup
-// ============================================================================
-
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 EcoClean Express server running on port ${PORT}`);
-    console.log(`📡 Endpoints:`);
-    console.log(`   POST  /api/issues`);
-    console.log(`   GET   /api/issues`);
-    console.log(`   PATCH /api/issues/:id`);
-    console.log(`   GET   /api/stats`);
-    console.log(`   POST  /api/auth/login`);
+app.get('/api/geocode/ip', async (_req, res) => {
+  try {
+    const resp = await fetch('https://ipwho.is/');
+    if (resp.ok) {
+      const d = await resp.json();
+      if (d && d.success !== false && d.latitude && d.longitude) {
+        return res.json({
+          success: true,
+          data: {
+            lat: Number(d.latitude),
+            lng: Number(d.longitude),
+            streetAddress: `${d.city || 'Central'}, ${d.region || ''}`.trim(),
+            areaLandmark: `${d.region || d.city || 'Metropolitan'}, ${d.country || ''}`.trim(),
+            city: d.city || '',
+            region: d.region || '',
+            country: d.country || '',
+          },
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('ip location fallback error:', e);
+  }
+  res.json({
+    success: true,
+    data: {
+      lat: 28.6139,
+      lng: 77.2090,
+      streetAddress: '14 Market Street, Sector 4',
+      areaLandmark: 'Central Civic District',
+      city: 'New Delhi',
+      region: 'Delhi',
+      country: 'India',
+    },
   });
-}
+});
 
-module.exports = app;
+// Production Static Serving for Built Vite React App
+app.use(express.static(path.resolve(__dirname, 'dist')));
+app.get('*', (_req, res) => {
+  res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🌐 Server running at http://0.0.0.0:${PORT}`);
+  console.log(`   Database Mode: ${isMongoConnected ? 'MongoDB Atlas' : 'In-Memory Array'}`);
+});
