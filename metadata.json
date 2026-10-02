@@ -1,0 +1,8 @@
+{
+  "name": "EcoClean - Waste & Civic Incident Management",
+  "description": "Modern civic waste reporting, real-time incident tracking, and municipal admin dispatch dashboard in a crisp white and eco-green aesthetic.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
